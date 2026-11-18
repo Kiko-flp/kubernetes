@@ -1,34 +1,85 @@
-# 1. Introducción
+# 1. Introducción a Kubernetes
 
-## 1.1 ¿Qué es Kubernetes?
+## 1.1 El problema real
 
-**Kubernetes** (abreviado habitualmente como **K8s**) es una plataforma de código abierto para la **orquestación de contenedores**. Permite automatizar el despliegue, el escalado y la gestión de aplicaciones empaquetadas en contenedores (como Docker o containerd) sobre uno o varios nodos.
+En los entornos actuales de producción, las aplicaciones deben cumplir una serie de exigencias críticas:
 
-Mientras que un motor de contenedores ejecuta aplicaciones aisladas en una máquina, Kubernetes coordina múltiples contenedores repartidos en un clúster para garantizar que los servicios sigan disponibles, se recuperen ante fallos y se adapten a la carga de trabajo.
+- **Disponibilidad 24/7:** los servicios deben estar operativos de forma continua.
+- **Gran volumen de usuarios:** las aplicaciones reciben picos y cargas elevadas de tráfico simultáneo.
+- **Cambios constantes:** el software se actualiza con frecuencia para corregir errores o añadir funcionalidades.
+- **Sin paradas de servicio:** las actualizaciones y los fallos no pueden interrumpir la disponibilidad para los usuarios.
 
-## 1.2 Funcionalidades principales
+## 1.2 Contenedores: primera solución
 
-| Característica | Descripción |
+Un **contenedor** empaqueta una **aplicación junto con sus dependencias**. Su uso resuelve problemas clásicos de desarrollo y despliegue (como el habitual *"en mi máquina funcionaba"*):
+
+- **Aíslan la aplicación** del resto del sistema.
+- **Funcionan igual en cualquier entorno** (desarrollo, pruebas o producción).
+- **Facilitan el despliegue y la actualización** de versiones.
+
+Sin embargo, usar únicamente contenedores **no es suficiente en producción**, ya que por sí solos:
+
+- **No escalan solos** cuando aumenta el número de usuarios.
+- **No se recuperan ante fallos** de forma automática.
+- **No balancean la carga** entre múltiples instancias.
+
+## 1.3 ¿Qué es Kubernetes?
+
+**Kubernetes** es un **orquestador de contenedores** pensado para entornos de producción que gestiona grandes cantidades de contenedores y automatiza las decisiones sobre ellos.
+
+Entre sus funciones principales se encuentran:
+
+- **Ejecutar contenedores automáticamente** en los servidores disponibles.
+- **Crear y mantener varias copias** de una misma aplicación.
+- **Escalar según la carga** de trabajo.
+- **Recuperarse ante fallos** reprogramando contenedores o sustituyendo instancias caídas.
+- **Actualizar sin parar el servicio** mediante despliegues progresivos.
+
+## 1.4 Arquitectura de Kubernetes
+
+Un **clúster** de Kubernetes es un conjunto de máquinas (servidores) que trabajan juntas, donde cada máquina recibe el nombre de **nodo**. Disponer de varios nodos permite **escalar** (más copias), lograr **alta disponibilidad** (si un nodo cae, otro continúa dando servicio) y realizar **reparto de carga**.
+
+El clúster se divide en dos tipos de nodos:
+
+### Control Plane (Master)
+
+Es la parte que **toma las decisiones y controla el estado del clúster**; no ejecuta aplicaciones de usuario. Sus componentes principales son:
+
+| Componente | Función |
 | --- | --- |
-| **Despliegue automatizado** | Define el estado deseado de la aplicación mediante manifiestos YAML y Kubernetes se encarga de alcanzarlo y mantenerlo. |
-| **Autocuración (*self-healing*)** | Reinicia contenedores que fallan, reemplaza nodos caídos y reprograma cargas de trabajo sin intervención manual. |
-| **Escalado horizontal** | Aumenta o reduce el número de réplicas de una aplicación según la demanda de recursos o de forma manual. |
-| **Balanceo de carga y descubrimiento** | Expone los contenedores mediante servicios estables y distribuye el tráfico entre las réplicas disponibles. |
-| **Actualizaciones y rollbacks** | Permite desplegar nuevas versiones de forma progresiva (*rolling updates*) y volver atrás si se detecta algún fallo. |
-| **Gestión de configuración y secretos** | Separa la configuración (`ConfigMap`) y los datos sensibles (`Secret`) del código de la aplicación. |
+| **API Server (`kube-apiserver`)** | Punto de entrada a Kubernetes; toda comunicación con el clúster pasa por aquí (por ejemplo, desde `kubectl`). |
+| **Scheduler (`kube-scheduler`)** | Decide en qué *Worker Node* se debe ejecutar cada carga de trabajo. |
+| **Base de datos (`etcd`)** | Almacena de forma persistente el estado completo del clúster. |
+| **Controller Manager (`kube-controller-manager`)** | Vigila que el estado actual del sistema coincida con el estado deseado definido. |
 
-## 1.3 Arquitectura básica de un clúster
+### Worker Nodes
 
-Un clúster de Kubernetes se divide en dos partes diferenciadas:
+Son los nodos **donde se ejecutan las aplicaciones**. Sus elementos clave son:
 
-- **Control Plane (plano de control):** gestiona el estado global del clúster, toma decisiones de planificación y responde a eventos. Sus componentes principales son `kube-apiserver`, `etcd`, `kube-scheduler` y `kube-controller-manager`.
-- **Worker Nodes (nodos de trabajo):** ejecutan las cargas de trabajo reales (los contenedores). Cada nodo incluye `kubelet` (agente que se comunica con el plano de control), `kube-proxy` (gestión de red y reglas de tráfico) y un entorno de ejecución de contenedores (*container runtime*).
+- **`kubelet`:** agente de Kubernetes en el nodo que recibe órdenes del *Control Plane* y se asegura de que los contenedores estén funcionando.
+- **Container Runtime (`containerd`):** componente encargado de ejecutar, arrancar y parar realmente los contenedores *(aunque en diagramas antiguos aparezca Docker, actualmente Kubernetes utiliza `containerd`)*.
+- **`kube-proxy`:** gestiona la comunicación de red en el nodo.
+- **Pod:** unidad mínima de ejecución en Kubernetes; agrupa uno o varios contenedores que se ejecutan juntos en el mismo nodo.
 
-## 1.4 Entorno de laboratorio y alcance
+## 1.5 Otros orquestadores
 
-Para realizar las prácticas de este repositorio se utiliza **Minikube** junto con **`kubectl`**:
+Existen otras soluciones de orquestación además de Kubernetes:
 
-- **Minikube:** permite levantar un clúster local de Kubernetes en un único nodo (sobre VirtualBox o Docker) para aprender y probar despliegues sin necesidad de infraestructura en producción.
-- **`kubectl`:** herramienta de línea de comandos oficial para interactuar con el clúster, crear recursos y consultar su estado.
+- **Docker Swarm:** orquestador sencillo integrado directamente en Docker.
+- **Apache Mesos:** proyecto potente para gestión de recursos, aunque hoy poco usado para contenedores.
+- **Nomad:** orquestador simple desarrollado por HashiCorp.
+- **Kubernetes:** estándar de facto en producción.
 
-En los siguientes apartados se aborda la instalación del entorno y el uso de los recursos fundamentales de Kubernetes: **Pods**, **ReplicaSets** y **Deployments**.
+### Comparativa: Docker Swarm vs Kubernetes
+
+| Característica | Docker Swarm | Kubernetes |
+| --- | --- | --- |
+| **Tipo** | Orquestador básico | Orquestador completo |
+| **Facilidad de uso** | Muy sencillo | Más complejo |
+| **Integración** | Integrado en Docker | Independiente de Docker |
+| **Escalado automático** | Básico | Avanzado |
+| **Alta disponibilidad** | Limitada | Completa |
+| **Actualizaciones sin parada** | Básicas | Muy avanzadas |
+| **Uso en producción** | Pequeños entornos | Estándar en producción |
+| **Ecosistema** | Muy reducido | Muy amplio |
+| **Popularidad actual** | En desuso | Estándar de facto |
